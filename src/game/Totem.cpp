@@ -55,6 +55,14 @@ bool Totem::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* 
     if (fabs(cPos.m_pos.z - owner->GetPositionZ()) > 5.0f)
         cPos.m_pos.z = owner->GetPositionZ();
 
+    // totem must be at same caster position in case default totem position is unhandy.
+    if (!owner->IsWithinLOS(cPos.m_pos.x, cPos.m_pos.y, cPos.m_pos.z))
+    {
+        cPos.m_pos.x = owner->GetPositionX();
+        cPos.m_pos.y = owner->GetPositionY();
+        cPos.m_pos.z = owner->GetPositionZ();
+    }
+
     if (!cPos.Relocate(this))
         return false;
 

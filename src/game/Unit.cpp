@@ -1746,6 +1746,7 @@ void Unit::DealMeleeDamage(CalcDamageInfo* damageInfo, bool durabilityLoss)
 
     // If this is a creature and it attacks from behind it has a probability to daze it's victim
     if ((damageInfo->hitOutCome == MELEE_HIT_CRIT || damageInfo->hitOutCome == MELEE_HIT_CRUSHING || damageInfo->hitOutCome == MELEE_HIT_NORMAL || damageInfo->hitOutCome == MELEE_HIT_GLANCING) &&
+            pVictim->GetTypeId() == TYPEID_PLAYER &&
             GetTypeId() != TYPEID_PLAYER && !((Creature*)this)->GetCharmerOrOwnerGuid() && !pVictim->HasInArc(M_PI_F, this))
     {
         // -probability is between 0% and 40%
@@ -9043,6 +9044,8 @@ void Unit::SetFeared(bool apply, ObjectGuid casterGuid, uint32 spellID, uint32 t
 
         if (GetTypeId() != TYPEID_PLAYER && isAlive())
         {
+            clearUnitState(UNIT_STAT_FLEEING|UNIT_STAT_FLEEING_MOVE);
+
             Creature* c = ((Creature*)this);
             // restore appropriate movement generator
             if (getVictim())
@@ -9078,6 +9081,7 @@ void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
 
         if (GetTypeId() != TYPEID_PLAYER && isAlive())
         {
+            clearUnitState(UNIT_STAT_CONFUSED|UNIT_STAT_CONFUSED_MOVE);
             // restore appropriate movement generator
             if (getVictim())
                 GetMotionMaster()->MoveChase(getVictim());

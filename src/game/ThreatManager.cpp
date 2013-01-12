@@ -421,6 +421,9 @@ void ThreatManager::addThreat(Unit* pVictim, float pThreat, bool crit, SpellScho
     if (!pVictim->isAlive() || !getOwner()->isAlive())
         return;
 
+    if (pVictim->GetTypeId() == TYPEID_UNIT && getOwner()->GetTypeId() == TYPEID_UNIT && pVictim->getFaction() == getOwner()->getFaction())
+        return;
+
     MANGOS_ASSERT(getOwner()->GetTypeId() == TYPEID_UNIT);
 
     float threat = ThreatCalcHelper::CalcThreat(pVictim, iOwner, pThreat, crit, schoolMask, pThreatSpell);

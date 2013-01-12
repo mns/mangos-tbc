@@ -254,7 +254,7 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recv_data)
 
     uint32 count = m.size();
     data.put(0, clientcount);                               // insert right count, listed count
-    data.put(4, count > 50 ? count : clientcount);          // insert right count, online count
+    data.put(4, clientcount);                               // insert right count, online count
 
     SendPacket(&data);
     DEBUG_LOG("WORLD: Send SMSG_WHO Message");
@@ -1330,12 +1330,28 @@ void WorldSession::HandleSetDungeonDifficultyOpcode(WorldPacket& recv_data)
     if (Difficulty(mode) == _player->GetDifficulty())
         return;
 
-    // cannot reset while in an instance
-    Map* map = _player->GetMap();
-    if (map && map->IsDungeon())
+    // cannot reset while in an instance - or groupmembers are inside instance
+    if (Group *pGroup = _player->GetGroup())
     {
-        sLog.outError("WorldSession::HandleSetDungeonDifficultyOpcode: player %d tried to reset the instance while inside!", _player->GetGUIDLow());
-        return;
+        for (GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
+        {
+
+            Map *map = itr->getSource()->GetMap();
+            if (map && map->IsDungeon())
+            {
+                sLog.outError("WorldSession::HandleSetDungeonDifficultyOpcode: player %d tried to reset the instance while inside!", _player->GetGUIDLow());
+                return;
+            }
+        }
+    }
+    else
+    {
+        Map *map = _player->GetMap();
+        if(map && map->IsDungeon())
+        {
+            sLog.outError("WorldSession::HandleSetDungeonDifficultyOpcode: player %d tried to reset the instance while inside!", _player->GetGUIDLow());
+            return;
+        }
     }
 
     // Exception to set mode to normal for low-level players
