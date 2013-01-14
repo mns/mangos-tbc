@@ -554,7 +554,7 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDa
         RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
         RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
-        if (pVictim != this)
+        if (pVictim != this && !HasAura(46021) && !HasAura(44801))
             RemoveSpellsCausingAura(SPELL_AURA_MOD_INVISIBILITY);
 
         if (pVictim->GetTypeId() == TYPEID_PLAYER && !pVictim->IsStandState() && !pVictim->hasUnitState(UNIT_STAT_STUNNED))
