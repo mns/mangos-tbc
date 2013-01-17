@@ -91,6 +91,9 @@ void TargetedMovementGeneratorMedium<T, D>::_setTargetLocation(T& owner, bool up
     init.Launch();
 }
 
+#define RECHECK_DISTANCE_TIMER 200
+#define TARGET_NOT_ACCESSIBLE_MAX_TIMER 5000
+
 template<class T, typename D>
 bool TargetedMovementGeneratorMedium<T, D>::Update(T& owner, const uint32& time_diff)
 {
@@ -128,22 +131,75 @@ bool TargetedMovementGeneratorMedium<T, D>::Update(T& owner, const uint32& time_
     }
 
     bool targetMoved = false;
+
     i_recheckDistance.Update(time_diff);
     if (i_recheckDistance.Passed())
     {
-        i_recheckDistance.Reset(100);
+        i_recheckDistance.Reset(RECHECK_DISTANCE_TIMER);
 
         // More distance let have better performance, less distance let have more sensitive reaction at target move.
-        float allowed_dist = owner.GetObjectBoundingRadius() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
+        // float allowed_dist = owner.GetObjectBoundingRadius() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
+
+        float allowed_dist = 0.0f;
+        bool targetIsVictim = owner.getVictim() && owner.getVictim()->GetObjectGuid() == i_target->GetObjectGuid();
+        if (targetIsVictim)
+        {
+            allowed_dist = owner.GetFloatValue(UNIT_FIELD_COMBATREACH) + owner.getVictim()->GetFloatValue(UNIT_FIELD_COMBATREACH) +
+                           BASE_MELEERANGE_OFFSET;
+            if (allowed_dist < ATTACK_DISTANCE)
+                allowed_dist = ATTACK_DISTANCE;
+        }
+        else
+            allowed_dist = i_target->GetObjectBoundingRadius() + owner.GetObjectBoundingRadius() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
+
+        if (allowed_dist < owner.GetObjectBoundingRadius())
+            allowed_dist = owner.GetObjectBoundingRadius();
+
         G3D::Vector3 dest = owner.movespline->FinalDestination();
 
-        if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
+        if (dest == Vector3())
+            targetMoved = true;
+        else if (owner.GetTypeId() == TYPEID_UNIT && (((Creature*)&owner)->CanFly() || ((Creature*)&owner)->IsLevitating()))
             targetMoved = !i_target->IsWithinDist3d(dest.x, dest.y, dest.z, allowed_dist);
         else
             targetMoved = !i_target->IsWithinDist2d(dest.x, dest.y, allowed_dist);
+
+        if (targetIsVictim && owner.GetTypeId() == TYPEID_UNIT && !((Creature*)&owner)->IsPet())
+        {
+            if ((!owner.getVictim() || !owner.getVictim()->isAlive()) && owner.movespline->Finalized())
+                return false;
+
+            if (!i_offset && owner.movespline->Finalized() && !owner.CanReachWithMeleeAttack(owner.getVictim())
+                /*&& !i_target->m_movementInfo.HasMovementFlag(MOVEFLAG_PENDINGSTOP)*/)
+            {
+                if (i_targetSearchingTimer >= TARGET_NOT_ACCESSIBLE_MAX_TIMER)
+                {
+                    // Evading in Unit::SelectHostileTarget()
+                    owner.DeleteThreatList();
+                    return false;
+                }
+                else
+                {
+                    i_targetSearchingTimer += RECHECK_DISTANCE_TIMER;
+                    targetMoved = true;
+                }
+            }
+            else
+                i_targetSearchingTimer = 0;
+        }
+        else
+            i_targetSearchingTimer = 0;
     }
 
-    if (m_speedChanged || targetMoved)
+    bool targetIsAccessable = true;
+    if (i_target->IsLevitating() || (i_target->GetTypeId() == TYPEID_PLAYER && ((Player*)&owner)->IsFlying()))
+        targetIsAccessable = owner.IsLevitating();
+    else if ((i_target->IsInWater() || i_target->IsUnderWater()) && owner.GetTypeId() == TYPEID_UNIT)
+        targetIsAccessable = ((Creature*)&owner)->CanSwim();
+    else if (owner.GetTypeId() == TYPEID_UNIT)
+        targetIsAccessable = ((Creature*)&owner)->CanWalk() || ((Creature*)&owner)->CanFly();
+
+    if ((m_speedChanged || targetMoved) && targetIsAccessable)
         _setTargetLocation(owner, targetMoved);
 
     if (owner.movespline->Finalized())
@@ -198,7 +254,6 @@ void ChaseMovementGenerator<Creature>::Initialize(Creature& owner)
 {
     owner.SetWalk(false, false);                            // Chase movement is running
     owner.addUnitState(UNIT_STAT_CHASE);                    // _MOVE set in _SetTargetLocation after required checks
-    _setTargetLocation(owner, true);
 }
 
 template<class T>

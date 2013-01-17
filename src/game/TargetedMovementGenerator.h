@@ -40,7 +40,7 @@ class MANGOS_DLL_SPEC TargetedMovementGeneratorMedium
     protected:
         TargetedMovementGeneratorMedium(Unit& target, float offset, float angle) :
             TargetedMovementGeneratorBase(target),
-            i_recheckDistance(0),
+            i_recheckDistance(0), i_targetSearchingTimer(0),
             i_offset(offset), i_angle(angle),
             m_speedChanged(false), i_targetReached(false),
             i_path(NULL)
@@ -61,6 +61,7 @@ class MANGOS_DLL_SPEC TargetedMovementGeneratorMedium
         void _setTargetLocation(T&, bool updateDestination);
 
         ShortTimeTracker i_recheckDistance;
+        uint32 i_targetSearchingTimer;
         float i_offset;
         float i_angle;
         bool m_speedChanged : 1;
