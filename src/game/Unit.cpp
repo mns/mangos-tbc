@@ -536,7 +536,11 @@ void Unit::DealDamageMods(Unit* pVictim, uint32& damage, uint32* absorb)
         ((Creature*)this)->AI()->DamageDeal(pVictim, damage);
     // Script Event damage taken
     if (pVictim->GetTypeId() == TYPEID_UNIT && ((Creature*)pVictim)->AI())
+    {
+        if (((Creature*)pVictim)->IsWorldBoss() && pVictim->hasUnitState(UNIT_STAT_CHASE_MOVE) && pVictim->getVictim() && !pVictim->CanReachWithMeleeAttack(pVictim->getVictim()))
+            damage = 0;
         ((Creature*)pVictim)->AI()->DamageTaken(this, damage);
+    }
 
     if (absorb && originalDamage > damage)
         *absorb += (originalDamage - damage);
